@@ -9,9 +9,12 @@ QEMU    ?= qemu-system-riscv32
 
 BUILD   := build
 ELF     := $(BUILD)/kernel.elf
-SRC     := src/boot.S
-OBJ     := $(BUILD)/boot.o
 LDSCRIPT := link.ld
+
+# Automatically find all assembly source files
+SRC     := $(wildcard src/*.s src/*.S)
+OBJ     := $(patsubst src/%.s,$(BUILD)/%.o,$(filter %.s,$(SRC))) \
+           $(patsubst src/%.S,$(BUILD)/%.o,$(filter %.S,$(SRC)))
 
 ARCH    := -march=rv32ima_zicsr -mabi=ilp32
 ASFLAGS := $(ARCH) -g -Iinclude -MMD -MP
@@ -25,19 +28,23 @@ QFLAGS  := -machine virt -nographic -bios none -kernel $(ELF)
 
 all: $(ELF)
 
-# Step 2: Link the object file into the final ELF
-$(ELF): $(OBJ) $(LDSCRIPT) | $(BUILD)
-	$(CC) $(LDFLAGS) -o $@ $(OBJ)
-
-# Step 1: Compile boot.S into an object file
-$(OBJ): $(SRC) | $(BUILD)
-	$(CC) $(ASFLAGS) -c $< -o $@
-
-# Create build directory if needed
+# Create build directory
 $(BUILD):
 	mkdir -p $(BUILD)
 
-# Check entry point and stack symbol addresses
+# Compile lowercase .s files
+$(BUILD)/%.o: src/%.s | $(BUILD)
+	$(CC) $(ASFLAGS) -c $< -o $@
+
+# Compile uppercase .S files
+$(BUILD)/%.o: src/%.S | $(BUILD)
+	$(CC) $(ASFLAGS) -c $< -o $@
+
+# Link all object files
+$(ELF): $(OBJ) $(LDSCRIPT) | $(BUILD)
+	$(CC) $(LDFLAGS) -o $@ $(OBJ)
+
+# Utilities
 check: $(ELF)
 	$(NM) $(ELF) | grep -E '_start|__stack_top'
 
