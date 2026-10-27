@@ -23,7 +23,7 @@ SECTIONS
         . = ALIGN(4);
         __bss_end = .;
     } > RAM
-
+    PROVIDE(__uart_base_addr = 0x10000000);
     .stack (NOLOAD) : ALIGN(16) {
         __stack_bottom = .;
         . += 4096;               /* boot stack size is set to 4kb can be changed later*/
